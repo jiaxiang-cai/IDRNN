@@ -9,8 +9,8 @@ from skimage.draw import random_shapes
 # 不知道哪里找到的野鸡模板，后面改
 
 class CustomDataset(Dataset):
-    def __init__(self, root_dir, transform=None):
-        self.root_dir = root_dir
+    def __init__(self, file_path):
+        self.file_path = file_path
         self.transform = transform
         self.images = []
         self.labels = []
@@ -33,3 +33,7 @@ class CustomDataset(Dataset):
         if self.transform:
             img = self.transform(img)
         return img, label
+
+class GNNDataset(Dataset):
+    def __init__(self, root_dir):
+        pass
