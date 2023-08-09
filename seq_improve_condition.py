@@ -40,7 +40,7 @@ def count_seq(seq):
 
     summary['sorted_diff']=sorted_diff
     return sorted_diff
-def conditioned_seq(seq):
+def conditioned_seq(seq, l):
     sorted_diff = count_seq(seq)
     less_aa = []
     more_aa = []
@@ -52,9 +52,9 @@ def conditioned_seq(seq):
         # print('before', count_seq(seq))
         for aa in less_aa:
             all_pos_aa = [index for index, element in enumerate(seq) if element == aa]
-            print(aa,all_pos_aa)
+            # print(aa,all_pos_aa)
             pos_to_change = random.sample(all_pos_aa, int(sorted_diff[aa]*l))
-            print(pos_to_change)
+            # print(pos_to_change)
             for pos in pos_to_change:
                 seq[pos] = random.choice(more_aa)
     

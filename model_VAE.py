@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 from collections import OrderedDict
+from seq_improve_condition import conditioned_seq
 
 # cuda setup
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -70,7 +71,8 @@ class ConditionalVAE(nn.Module):
 
     def forward(self, x):
         latent_rep = self.encoder(x)
-        dec_input = latent_rep + x
+        conditioned_x = conditioned_seq(x, l=1500)
+        dec_input = latent_rep + conditioned_x
         output = self.decoder(dec_input)
         return output
 
