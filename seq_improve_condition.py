@@ -44,20 +44,20 @@ def conditioned_seq(seq):
     sorted_diff = count_seq(seq)
     less_aa = []
     more_aa = []
-for aa in sorted_diff:
-    if sorted_diff[aa]>0.03:
-        less_aa.append(aa)
-    if sorted_diff[aa]<-0.03:
-        more_aa.append(aa)
-    # print('before', count_seq(seq))
-    for aa in less_aa:
-        all_pos_aa = [index for index, element in enumerate(seq) if element == aa]
-        print(aa,all_pos_aa)
-        pos_to_change = random.sample(all_pos_aa, int(sorted_diff[aa]*l))
-        print(pos_to_change)
-        for pos in pos_to_change:
-            seq[pos] = random.choice(more_aa)
-
-    # print(seq)
-    # print('after',count_seq(seq))
-    return seq
+    for aa in sorted_diff:
+        if sorted_diff[aa]>0.03:
+            less_aa.append(aa)
+        if sorted_diff[aa]<-0.03:
+            more_aa.append(aa)
+        # print('before', count_seq(seq))
+        for aa in less_aa:
+            all_pos_aa = [index for index, element in enumerate(seq) if element == aa]
+            print(aa,all_pos_aa)
+            pos_to_change = random.sample(all_pos_aa, int(sorted_diff[aa]*l))
+            print(pos_to_change)
+            for pos in pos_to_change:
+                seq[pos] = random.choice(more_aa)
+    
+        # print(seq)
+        # print('after',count_seq(seq))
+        return seq
