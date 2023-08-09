@@ -8,7 +8,7 @@ from collections import OrderedDict
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 #随便写的，没写完。先评价一下。
-class EncoderLn(nn.module):
+class EncoderLn(nn.Module):
     def __init__(self, input_dim, hid_layer, latent_dim, last_layer_activation=False):
         super().__init__()
 
@@ -32,7 +32,7 @@ class EncoderLn(nn.module):
         out = self.enc(x)
         return x, out
 
-class DecoderLn(nn.module):
+class DecoderLn(nn.Module):
     def __init__(self, latent_dim, class_dim, hid_layer, output_dim):
         super().__init__()
 
@@ -50,12 +50,27 @@ class DecoderLn(nn.module):
         
         self.dec.append(nn.Linear(hid_layer[-1], output_dim))
         
-    def forward(self, hid_rep, x):
-        input = np.concatenate((x, hid_rep))
+    def forward(self, hid_rep, class_def):
+        input = np.concatenate((class_def, hid_rep))
         output = self.dec(input)
         return output
     
-class ConditionalVAE(nn.module):
-    def __init__(self, x):
-        pass
+class ConditionalVAE(nn.Module):
+    def __init__(self, input_dim, hid_layer, latent_dim, class_dim, output_dim, last_layer_activation=False):
+        super().__init__()
+
+        self.input_dim = input_dim
+        self.latent_dim = latent_dim
+        self.class_dim = class_dim
+        self.output_dim = output_dim
+        self.last_layer_activation = last_layer_activation
+
+        self.encoder = EncoderLn(input_dim, hid_layer, latent_dim, last_layer_activation)
+        self.decoder = DecoderLn(latent_dim, class_dim, hid_layer, output_dim)
+
+    def forward(self, x):
+        latent_rep = self.encoder(x)
+        dec_input = latent_rep + x
+        output = self.decoder(dec_input)
+        return output
 

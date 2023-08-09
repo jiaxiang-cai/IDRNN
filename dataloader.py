@@ -1,6 +1,6 @@
 import pandas as pd
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 
 amino_acid_mapping = {
     "A": 0, "C": 1, "D": 2, "E": 3, "F": 4, "G": 5,
