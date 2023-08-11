@@ -69,9 +69,12 @@ class ConditionalVAE(nn.Module):
         self.encoder = EncoderLn(input_dim, hid_layer, latent_dim, last_layer_activation)
         self.decoder = DecoderLn(latent_dim, class_dim, hid_layer, output_dim)
 
+        self.padding = nn.ConstantPad1d(input_dim, -1)
+
     def forward(self, x):
+        x = self.padding(x)
         latent_rep = self.encoder(x)
-        conditioned_x = conditioned_seq(x, l=1500)
+        conditioned_x = conditioned_seq(x, l=self.input_dim)
         dec_input = latent_rep + conditioned_x
         output = self.decoder(dec_input)
         return output
