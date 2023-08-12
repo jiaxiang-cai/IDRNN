@@ -42,7 +42,7 @@ def proteinread(filename):
 
     # Split the dataset into training and validation sets
     train_data, val_data = train_test_split(binary_sequence_tensor, train_size=training_size, random_state=42)
-    return train_data, val_data
+    return train_data, val_data, max_sequence_length
 
 # Define a custom dataset class
 class ProteinDataset(Dataset):

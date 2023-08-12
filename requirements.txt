@@ -3,3 +3,6 @@ h5py
 torch
 tqdm
 pytest
+ipympl
+matplotlib
+idx2numpy
