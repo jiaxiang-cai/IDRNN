@@ -1,7 +1,7 @@
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-import tqdm
+from sklearn.model_selection import train_test_split
 from copy import deepcopy
 
 
@@ -29,22 +29,26 @@ def proteinread(filename):
         sequence = row[0]
         binary_sequence_matrix = [aa_dict[amino] for amino in sequence]
         binary_sequence_matrices.append(binary_sequence_matrix)
-    
-    if len(binary_sequence_matrix) > max_sequence_length:
-        max_sequence_length = len(binary_sequence_matrix)
+        if len(binary_sequence_matrix) > max_sequence_length:
+            max_sequence_length = len(binary_sequence_matrix)
 
     # Pad sequences to the same length
     padded_binary_sequence_matrices = [seq + [[0] * 20] * (max_sequence_length - len(seq)) for seq in binary_sequence_matrices]
 
     # Convert the padded matrices to a tensor
     binary_sequence_tensor = torch.tensor(padded_binary_sequence_matrices, dtype=torch.float32)
-    return binary_sequence_tensor
+    # Define the validation set size (20% of the total data)
+    training_size = 0.8
+
+    # Split the dataset into training and validation sets
+    train_data, val_data = train_test_split(binary_sequence_tensor, train_size=training_size, random_state=42)
+    return train_data, val_data
 
 # Define a custom dataset class
 class ProteinDataset(Dataset):
-    def __init__(self, data_path):
+    def __init__(self, data):
         
-        self.data = proteinread(data_path)
+        self.data = data
 
     def __len__(self):
         return len(self.data)
