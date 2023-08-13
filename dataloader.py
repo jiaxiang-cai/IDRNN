@@ -34,7 +34,10 @@ def proteinread(filename):
             max_sequence_length = len(binary_sequence_matrix)
 
     # Pad sequences to the same length
-    padded_binary_sequence_matrices = [seq + [[0] * 20] * (max_sequence_length - len(seq)) for seq in binary_sequence_matrices]
+    padded_binary_sequence_matrices = [
+        [[0] * 20] * ((max_sequence_length - len(seq)) // 2) + seq + [[0] * 20] * ((max_sequence_length - len(seq) + 1) // 2)
+        for seq in binary_sequence_matrices
+    ] 
     # Convert the padded matrices to a tensor
     binary_sequence_tensor = torch.tensor(padded_binary_sequence_matrices, dtype=torch.float32)
 
