@@ -38,12 +38,7 @@ def proteinread(filename):
     # Convert the padded matrices to a tensor
     binary_sequence_tensor = torch.tensor(padded_binary_sequence_matrices, dtype=torch.float32)
 
-    # Define the validation set size (20% of the total data)
-    training_size = 0.8
-
-    # Split the dataset into training and validation sets
-    train_data, val_data = train_test_split(binary_sequence_tensor, train_size=training_size, random_state=42)
-    return train_data, val_data, max_sequence_length
+    return binary_sequence_tensor, max_sequence_length
 
 # Define a custom dataset class
 class ProteinDataset(Dataset):
