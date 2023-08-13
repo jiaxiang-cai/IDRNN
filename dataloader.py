@@ -1,5 +1,6 @@
 import pandas as pd
 import torch
+import numpy as np
 from torch.utils.data import Dataset
 from sklearn.model_selection import train_test_split
 from copy import deepcopy
@@ -34,9 +35,9 @@ def proteinread(filename):
 
     # Pad sequences to the same length
     padded_binary_sequence_matrices = [seq + [[0] * 20] * (max_sequence_length - len(seq)) for seq in binary_sequence_matrices]
-
     # Convert the padded matrices to a tensor
     binary_sequence_tensor = torch.tensor(padded_binary_sequence_matrices, dtype=torch.float32)
+
     # Define the validation set size (20% of the total data)
     training_size = 0.8
 
@@ -55,4 +56,3 @@ class ProteinDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.data[idx]
-

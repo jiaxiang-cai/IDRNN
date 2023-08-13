@@ -25,6 +25,7 @@ class EncoderLn(nn.Module):
         self.log_var_nn = nn.Linear(hid_layer[-1], latent_dim)
 
     def forward(self, x):
+        x = torch.transpose(x, 1, 2)
         x = self.enc(x)
 
         mean = self.mean_nn(x)
@@ -50,6 +51,7 @@ class DecoderLn(nn.Module):
         
     def forward(self, x):
         x = self.dec(x)
+        x = torch.transpose(x, 1, 2)
 
         return x
     
