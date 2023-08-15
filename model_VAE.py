@@ -14,10 +14,9 @@ class EncoderLn(nn.Module):
         self.input_dim = input_dim
         self.latent_dim = latent_dim
 
-        self.enc = nn.Sequential(
-            nn.Linear(input_dim, hid_layer[0]), nn.ReLU()
-        )
-        for hidden_i in range(1, len(hid_layer) - 1):
+        self.enc = nn.Sequential(nn.Linear(input_dim, hid_layer[0]), nn.ReLU())
+        
+        for hidden_i in range(0, len(hid_layer) - 1):
             self.enc.append(nn.Linear(hid_layer[hidden_i], hid_layer[hidden_i + 1]))
             self.enc.append(nn.ReLU())
 
@@ -39,15 +38,14 @@ class DecoderLn(nn.Module):
         self.latent_dim = latent_dim
         self.output_dim = output_dim
 
-        self.dec = nn.Sequential(
-            nn.Linear(latent_dim, hid_layer[0]), nn.ReLU()
-        )
-        for hidden_i in range(1, len(hid_layer) - 1):
+        self.dec = nn.Sequential(nn.Linear(latent_dim, hid_layer[0]), nn.ReLU())
+
+        for hidden_i in range(0, len(hid_layer) - 1):
             self.dec.append(nn.Linear(hid_layer[hidden_i], hid_layer[hidden_i + 1]))
             self.dec.append(nn.ReLU())
         
         self.dec.append(nn.Linear(hid_layer[-1], output_dim))
-        self.dec.append(nn.Sigmoid())
+        self.dec.append(nn.Softmax())
         
     def forward(self, x):
         x = self.dec(x)
