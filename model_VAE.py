@@ -81,33 +81,32 @@ class DecoderLn(nn.Module):
 class EncoderGPT(nn.Module):
     def __init__(self, input_size, latent_dim):
         super(EncoderGPT, self).__init__()
-        
-        # Convolutional layers for local feature extraction
+
         self.conv1 = nn.Conv1d(input_size, 32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv1d(32, 64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv1d(64, 128, kernel_size=3, padding=1)
         
-        # Fully connected layers for mapping to latent space
+        # Batch normalization layers
+        self.bn1 = nn.BatchNorm1d(32)
+        self.bn2 = nn.BatchNorm1d(64)
+        self.bn3 = nn.BatchNorm1d(128)
+
         self.fc_mean = nn.Linear(128 * 1000, latent_dim)
         self.fc_logvar = nn.Linear(128 * 1000, latent_dim)
-        
+
     def forward(self, x):
-        # Input shape: (batch_size, input_size, sequence_length)
-        
-        # Apply convolutional layers
         x = self.conv1(x)
+        x = self.bn1(x)
         x = self.conv2(x)
+        x = self.bn2(x)
         x = self.conv3(x)
-        
-        # Flatten the features
+        x = self.bn3(x)
         x = x.view(x.size(0), -1)
         
-        # Calculate mean and log variance for latent distribution
         mean = self.fc_mean(x)
         logvar = self.fc_logvar(x)
         
         return mean, logvar
-
 # # Example usage
 # input_size = 20  # Number of amino acids
 # latent_dim = 3
@@ -132,6 +131,10 @@ class DecoderGPT(nn.Module):
         
         # Fully connected layer for mapping from latent space to hidden size
         self.fc = nn.Linear(latent_dim, 128 * 1000)
+        self.bn_fc = nn.BatchNorm1d(128 * 1000)
+
+         # Variational dropout layer
+        self.variational_dropout = nn.Dropout(p=0.2)
         
         # Deconvolutional (transpose convolution) layers for upsampling
         self.deconv1 = nn.ConvTranspose1d(128, 64, kernel_size=3, padding=1)
@@ -143,7 +146,11 @@ class DecoderGPT(nn.Module):
         
         # Fully connected layer
         x = self.fc(z)
+        x = self.bn_fc(x)
         x = x.view(x.size(0), 128, 1000)
+
+        # Apply variational dropout
+        x = self.variational_dropout(x)
         
         # Apply deconvolutional layers
         x = self.deconv1(x)
