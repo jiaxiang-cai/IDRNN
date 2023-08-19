@@ -23,14 +23,15 @@ class AminoAcidDataset(Dataset):
         
         # Convert amino acid sequence string to a list of integers (e.g., using a dictionary)
         sequence = [amino_acid_to_int[aa] for aa in sequence_str]
+        sequence_length = [len(sequence_str)]
         
         # Perform one-hot encoding and post-padding
         padded_sequence = np.zeros((self.max_sequence_length, self.num_amino_acids), dtype=np.float32)
         for i, amino_acid in enumerate(sequence):
             padded_sequence[i][amino_acid] = 1.0
         
-        return torch.tensor(padded_sequence, dtype=torch.float32).transpose(0, 1)
-
+        return torch.tensor(padded_sequence, dtype=torch.float32).transpose(0, 1), torch.tensor(sequence_length, dtype=torch.long)
+#
 
 
 # Path to the CSV file containing amino acid sequences

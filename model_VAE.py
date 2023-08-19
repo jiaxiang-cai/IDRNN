@@ -14,7 +14,7 @@ class EncoderLn(nn.Module):
         self.input_dim = input_dim
         self.latent_dim = latent_dim
 
-        self.enc = nn.Sequential(nn.Linear(input_dim, hid_layer[0]), nn.ReLU())
+        self.enc = nn.Sequential(nn.Linear(input_dim, hid_layer[0]), nn.Tanh(), nn.Dropout(p=0.3))
         
         for hidden_i in range(0, len(hid_layer) - 1):
             self.enc.append(nn.Linear(hid_layer[hidden_i], hid_layer[hidden_i + 1]))
@@ -91,39 +91,31 @@ class EncoderGPT(nn.Module):
         self.bn2 = nn.BatchNorm1d(64)
         self.bn3 = nn.BatchNorm1d(128)
 
+        # Dropout
+        self.drop1 = nn.Dropout1d(p=0.3)
+        # self.drop2 = nn.Dropout1d(p=0.3)
+        # self.drop3 = nn.Dropout1d(p=0.3)
+
+        # Activation fuctions
+        self.tanh = nn.Tanh()
+        self.relu = nn.ReLU()
+
         self.fc_mean = nn.Linear(128 * 1000, latent_dim)
         self.fc_logvar = nn.Linear(128 * 1000, latent_dim)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.conv2(x)
+        x = self.tanh(self.conv1(x))
+        x = self.drop1(x)
+        
+        x = self.tanh(self.conv2(x))
         x = self.bn2(x)
-        x = self.conv3(x)
-        x = self.bn3(x)
+        x = self.tanh(self.conv3(x))
         x = x.view(x.size(0), -1)
         
         mean = self.fc_mean(x)
         logvar = self.fc_logvar(x)
         
         return mean, logvar
-# # Example usage
-# input_size = 20  # Number of amino acids
-# latent_dim = 3
-# sequence_length = 1000  # Padded sequence length
-
-# # Create an instance of the Encoder
-# encoder = Encoder(input_size, latent_dim)
-
-# # Generate a random input batch
-# batch_size = 32
-# input_data = torch.randn(batch_size, input_size, sequence_length)
-
-# # Forward pass through the encoder
-# mean, logvar = encoder(input_data)
-
-# print("Mean shape:", mean.shape)
-# print("Logvar shape:", logvar.shape)
 
 class DecoderGPT(nn.Module):
     def __init__(self, latent_dim, output_size):
@@ -134,30 +126,52 @@ class DecoderGPT(nn.Module):
         self.bn_fc = nn.BatchNorm1d(128 * 1000)
 
          # Variational dropout layer
-        self.variational_dropout = nn.Dropout(p=0.2)
+        self.variational_dropout = nn.Dropout(p=0.3)
         
         # Deconvolutional (transpose convolution) layers for upsampling
         self.deconv1 = nn.ConvTranspose1d(128, 64, kernel_size=3, padding=1)
         self.deconv2 = nn.ConvTranspose1d(64, 32, kernel_size=3, padding=1)
         self.deconv3 = nn.ConvTranspose1d(32, output_size, kernel_size=3, padding=1)
+        self.bn_final = nn.BatchNorm1d(output_size)
+
+        # Activation functions
+        self.tanh = nn.Tanh()
+        self.relu = nn.ReLU()
+        self.prob_dist = nn.Softmax(dim=1) # column-wise softmax
+        # self.sigmoid = nn.Sigmoid()
         
-    def forward(self, z):
+    def forward(self, z, length):
         # Input shape: (batch_size, latent_dim)
         
         # Fully connected layer
-        x = self.fc(z)
+        x = torch.cat([z, length.view(-1,1)], dim=-1)
+        x = self.tanh(self.fc(z))
         x = self.bn_fc(x)
+        # x = self.bn_fc(x)
         x = x.view(x.size(0), 128, 1000)
 
         # Apply variational dropout
-        x = self.variational_dropout(x)
+        # x = self.variational_dropout(x)
         
         # Apply deconvolutional layers
-        x = self.deconv1(x)
-        x = self.deconv2(x)
-        x = torch.sigmoid(self.deconv3(x))
+        x = self.tanh((self.deconv1(x)))
+        x = self.tanh((self.deconv2(x)))
+        x = self.deconv3(x)
+        x = self.bn_final(x)
+        x = self.prob_dist(x)
+        x = self.clear_padding(x, length)
         
         return x
+    
+    def clear_padding(self, output_sequence, sequence_lengths):
+        processed_output_sequence = output_sequence.clone()  # Create a copy of the original tensor
+    
+        # Clear the padding areas for each sequence in the batch
+        for i in range(output_sequence.size(0)):
+            seq_length = sequence_lengths[i]
+            processed_output_sequence[i, :, seq_length:] = 0.0  # Set padding area to 0
+            
+        return processed_output_sequence
     
 class VAEGPT(nn.Module):
     def __init__(self, input_size, latent_dim, output_size):
@@ -165,10 +179,10 @@ class VAEGPT(nn.Module):
         self.encoder = EncoderGPT(input_size, latent_dim)
         self.decoder = DecoderGPT(latent_dim, output_size)
         
-    def forward(self, x):
+    def forward(self, x, length):
         mean, logvar = self.encoder(x)
         z = self.sample_latent(mean, logvar)
-        recon_x = self.decoder(z)
+        recon_x = self.decoder(z, length)
         return recon_x, mean, logvar
     
     def sample_latent(self, mean, logvar):
