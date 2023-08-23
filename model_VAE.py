@@ -86,10 +86,10 @@ class EncoderGPT(nn.Module):
         self.conv2 = nn.Conv1d(32, 64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv1d(64, 128, kernel_size=3, padding=1)
         
-        # Batch normalization layers
-        self.bn1 = nn.BatchNorm1d(32)
-        self.bn2 = nn.BatchNorm1d(64)
-        self.bn3 = nn.BatchNorm1d(128)
+        # # Batch normalization layers
+        # self.bn1 = nn.BatchNorm1d(32)
+        # self.bn2 = nn.BatchNorm1d(64)
+        # self.bn3 = nn.BatchNorm1d(128)
 
         # Dropout
         self.drop1 = nn.Dropout1d(p=0.3)
@@ -98,22 +98,32 @@ class EncoderGPT(nn.Module):
 
         # Activation fuctions
         self.tanh = nn.Tanh()
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU()
 
-        self.fc_mean = nn.Linear(128 * 1000, latent_dim)
-        self.fc_logvar = nn.Linear(128 * 1000, latent_dim)
+        self.fc_mean = nn.Linear(128, latent_dim)
+        self.fc_logvar = nn.Linear(128, latent_dim)
 
     def forward(self, x):
-        x = self.tanh(self.conv1(x))
-        x = self.drop1(x)
+        x = x.transpose(1,2)
+        x = self.conv1(x)
+        # x = self.drop1(x)
+        x = self.relu(x)
+
         
-        x = self.tanh(self.conv2(x))
-        x = self.bn2(x)
-        x = self.tanh(self.conv3(x))
-        x = x.view(x.size(0), -1)
+        x = self.conv2(x)
+        # x = self.bn2(x)
+        x = self.relu(x)
+
+        x = self.conv3(x)
+        x = self.relu(x)
+
+        # x = x.view(x.size(0), -1)
+        x = torch.transpose(x, 1, 2)
+        # (b, 128, 1000) -> (b, 1000, 128)
         
         mean = self.fc_mean(x)
         logvar = self.fc_logvar(x)
+        # (b, 1000, lat)
         
         return mean, logvar
 
@@ -122,56 +132,61 @@ class DecoderGPT(nn.Module):
         super(DecoderGPT, self).__init__()
         
         # Fully connected layer for mapping from latent space to hidden size
-        self.fc = nn.Linear(latent_dim, 128 * 1000)
-        self.bn_fc = nn.BatchNorm1d(128 * 1000)
+        self.fc = nn.Linear(latent_dim, 128)
+        self.bn_fc = nn.BatchNorm1d(128)
 
          # Variational dropout layer
         self.variational_dropout = nn.Dropout(p=0.3)
         
         # Deconvolutional (transpose convolution) layers for upsampling
-        self.deconv1 = nn.ConvTranspose1d(128, 64, kernel_size=3, padding=1)
-        self.deconv2 = nn.ConvTranspose1d(64, 32, kernel_size=3, padding=1)
-        self.deconv3 = nn.ConvTranspose1d(32, output_size, kernel_size=3, padding=1)
+        self.deconv1 = nn.Conv1d(128, 64, kernel_size=3, padding=1)
+        self.deconv2 = nn.Conv1d(64, 32, kernel_size=3, padding=1)
+        self.deconv3 = nn.Conv1d(32, output_size, kernel_size=3, padding=1)
         self.bn_final = nn.BatchNorm1d(output_size)
 
         # Activation functions
         self.tanh = nn.Tanh()
-        self.relu = nn.ReLU()
+        self.relu = nn.LeakyReLU()
         self.prob_dist = nn.Softmax(dim=1) # column-wise softmax
         # self.sigmoid = nn.Sigmoid()
         
-    def forward(self, z, length):
+    def forward(self, z):
         # Input shape: (batch_size, latent_dim)
         
         # Fully connected layer
-        x = torch.cat([z, length.view(-1,1)], dim=-1)
-        x = self.tanh(self.fc(z))
-        x = self.bn_fc(x)
+        # x = torch.cat([z, length.view(-1,1)], dim=-1)
+        ### (b, 1000, lat) -> (b, 1000, 128)
+        x = self.relu(self.fc(z))
         # x = self.bn_fc(x)
-        x = x.view(x.size(0), 128, 1000)
+        # x = self.bn_fc(x)
+        # x = x.view(x.size(0), 128, 1000)
+        x = torch.transpose(x, 1, 2)
 
         # Apply variational dropout
         # x = self.variational_dropout(x)
         
         # Apply deconvolutional layers
-        x = self.tanh((self.deconv1(x)))
-        x = self.tanh((self.deconv2(x)))
+        x = self.deconv1(x)
+        x = self.relu(x)
+        x = self.deconv2(x)
+        x = self.relu(x)
         x = self.deconv3(x)
-        x = self.bn_final(x)
-        x = self.prob_dist(x)
-        x = self.clear_padding(x, length)
+        x = self.relu(x)
+        # x = self.bn_final(x)
+        # x = self.prob_dist(x)
+        # x = self.clear_padding(x, length)
         
         return x
     
-    def clear_padding(self, output_sequence, sequence_lengths):
-        processed_output_sequence = output_sequence.clone()  # Create a copy of the original tensor
+    # def clear_padding(self, output_sequence, sequence_lengths):
+    #     processed_output_sequence = output_sequence.clone()  # Create a copy of the original tensor
     
-        # Clear the padding areas for each sequence in the batch
-        for i in range(output_sequence.size(0)):
-            seq_length = sequence_lengths[i]
-            processed_output_sequence[i, :, seq_length:] = 0.0  # Set padding area to 0
+    #     # Clear the padding areas for each sequence in the batch
+    #     for i in range(output_sequence.size(0)):
+    #         seq_length = sequence_lengths[i]
+    #         processed_output_sequence[i, :, seq_length:] = 0.0  # Set padding area to 0
             
-        return processed_output_sequence
+    #     return processed_output_sequence
     
 class VAEGPT(nn.Module):
     def __init__(self, input_size, latent_dim, output_size):
@@ -179,10 +194,10 @@ class VAEGPT(nn.Module):
         self.encoder = EncoderGPT(input_size, latent_dim)
         self.decoder = DecoderGPT(latent_dim, output_size)
         
-    def forward(self, x, length):
+    def forward(self, x):
         mean, logvar = self.encoder(x)
         z = self.sample_latent(mean, logvar)
-        recon_x = self.decoder(z, length)
+        recon_x = self.decoder(z)
         return recon_x, mean, logvar
     
     def sample_latent(self, mean, logvar):

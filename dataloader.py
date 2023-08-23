@@ -26,11 +26,15 @@ class AminoAcidDataset(Dataset):
         sequence_length = [len(sequence_str)]
         
         # Perform one-hot encoding and post-padding
-        padded_sequence = np.zeros((self.max_sequence_length, self.num_amino_acids), dtype=np.float32)
+        padded_sequence = np.zeros((self.max_sequence_length, self.num_amino_acids + 1), dtype=np.float32)
+        # Padded sequence should be in location of index 20
         for i, amino_acid in enumerate(sequence):
             padded_sequence[i][amino_acid] = 1.0
+        for pad in range(sequence_length[0], self.max_sequence_length):
+            padded_sequence[pad][20] = 1.0
+            sequence.append(20)
         
-        return torch.tensor(padded_sequence, dtype=torch.float32).transpose(0, 1), torch.tensor(sequence_length, dtype=torch.long)
+        return torch.tensor(padded_sequence, dtype=torch.float32), torch.tensor(sequence_length, dtype=torch.long), torch.tensor(sequence, dtype=torch.long)
 #
 
 
