@@ -10,10 +10,12 @@ amino_acid_to_int = {'A': 0, 'C': 1, 'D': 2, 'E': 3, 'F': 4, 'G': 5, 'H': 6, 'I'
 
 # Copy from ChatGPT
 class AminoAcidDataset(Dataset):
-    def __init__(self, csv_file, max_sequence_length, num_amino_acids):
+    def __init__(self, csv_file, max_sequence_length, num_amino_acids, use_2dcnn=False):
         self.data = pd.read_csv(csv_file)
         self.max_sequence_length = max_sequence_length
         self.num_amino_acids = num_amino_acids
+        self.use_2dcnn = use_2dcnn
+        
         
     def __len__(self):
         return len(self.data)
@@ -26,11 +28,21 @@ class AminoAcidDataset(Dataset):
         sequence_length = [len(sequence_str)]
         
         # Perform one-hot encoding and post-padding
+        if self.use_2dcnn:
+            self.max_sequence_length += 2 # Padding for 2D CNN in two sides
         padded_sequence = np.zeros((self.max_sequence_length, self.num_amino_acids + 1), dtype=np.float32)
         # Padded sequence should be in location of index 20
         for i, amino_acid in enumerate(sequence):
+            if self.use_2dcnn:
+                padded_sequence[i + 1][amino_acid] = 1.0
+                continue
             padded_sequence[i][amino_acid] = 1.0
         for pad in range(sequence_length[0], self.max_sequence_length):
+            if self.use_2dcnn:
+                padded_sequence[pad + 1][20] = 1.0
+                sequence.append(20)
+                continue
+            # Padded sequence should be in location of index 20
             padded_sequence[pad][20] = 1.0
             sequence.append(20)
         

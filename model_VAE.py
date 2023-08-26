@@ -14,7 +14,7 @@ class EncoderLn(nn.Module):
         self.input_dim = input_dim
         self.latent_dim = latent_dim
 
-        self.enc = nn.Sequential(nn.Linear(input_dim, hid_layer[0]), nn.Tanh(), nn.Dropout(p=0.3))
+        self.enc = nn.Sequential(nn.Linear(input_dim, hid_layer[0]), nn.ReLU())#, nn.Dropout(p=0.3))
         
         for hidden_i in range(0, len(hid_layer) - 1):
             self.enc.append(nn.Linear(hid_layer[hidden_i], hid_layer[hidden_i + 1]))
@@ -24,7 +24,7 @@ class EncoderLn(nn.Module):
         self.log_var_nn = nn.Linear(hid_layer[-1], latent_dim)
 
     def forward(self, x):
-        x = torch.transpose(x, 1, 2)
+        x = x.view(x.size(0), -1)
         x = self.enc(x)
 
         mean = self.mean_nn(x)
@@ -45,39 +45,43 @@ class DecoderLn(nn.Module):
             self.dec.append(nn.ReLU())
         
         self.dec.append(nn.Linear(hid_layer[-1], output_dim))
-        self.dec.append(nn.Softmax())
+        self.dec.append(nn.Sigmoid()) # Avoid blowing up
         
     def forward(self, x):
         x = self.dec(x)
-        x = torch.transpose(x, 1, 2)
+        x = x.view(x.size(0), 1000, 21)
 
         return x
+
+class Vaeln(nn.Module):
+    def __init__(self, input_dim, hid_layer, latent_dim):
+        super(Vaeln, self).__init__()
+
+        self.encoder = EncoderLn(input_dim=input_dim, hid_layer=hid_layer, latent_dim=latent_dim)
+        reverse_hid = self.hid_layer_reverse(hid_layer)
+        self.decoder = DecoderLn(latent_dim=latent_dim, hid_layer=reverse_hid, output_dim=input_dim)   
+
+
+    def hid_layer_reverse(self, hid_layer):
+        reverse_hid_layer = []
+        for i in range(len(hid_layer)):
+            reverse_hid_layer.append(hid_layer[-i - 1])
+        return reverse_hid_layer
     
-# class ConditionalVAE(nn.Module):
-#     def __init__(self, input_dim, hid_layer, latent_dim, class_dim, output_dim, last_layer_activation=False):
-#         super().__init__()
+    def forward(self, x):
+        mean, log_var = self.encoder(x)
+        z = self.reparameterize(mean, log_var)
+        recon_x = self.decoder(z)
+        return recon_x, mean, log_var
+    
+    def reparameterize(self, mean, log_var):
+        std = torch.exp(0.5 * log_var)
+        eps = torch.randn_like(std)
+        return eps * std + mean
+            
 
-#         self.input_dim = input_dim
-#         self.latent_dim = latent_dim
-#         self.class_dim = class_dim
-#         self.output_dim = output_dim
-#         self.last_layer_activation = last_layer_activation
-
-#         self.encoder = EncoderLn(input_dim, hid_layer, latent_dim, last_layer_activation)
-#         self.decoder = DecoderLn(latent_dim, class_dim, hid_layer, output_dim)
-
-#         self.padding = nn.ConstantPad1d(input_dim, -1)
-
-#     def forward(self, x):
-#         x = self.padding(x)
-#         latent_rep = self.encoder(x)
-#         conditioned_x = conditioned_seq(x, l=self.input_dim)
-#         dec_input = latent_rep + conditioned_x
-#         output = self.decoder(dec_input)
-#         return output
-
+    
 # Copy from ChatGPT
-
 class EncoderGPT(nn.Module):
     def __init__(self, input_size, latent_dim):
         super(EncoderGPT, self).__init__()
@@ -93,8 +97,8 @@ class EncoderGPT(nn.Module):
 
         # Dropout
         self.drop1 = nn.Dropout1d(p=0.3)
-        # self.drop2 = nn.Dropout1d(p=0.3)
-        # self.drop3 = nn.Dropout1d(p=0.3)
+        self.drop2 = nn.Dropout1d(p=0.3)
+        self.drop3 = nn.Dropout1d(p=0.3)
 
         # Activation fuctions
         self.tanh = nn.Tanh()
@@ -111,10 +115,11 @@ class EncoderGPT(nn.Module):
 
         
         x = self.conv2(x)
-        # x = self.bn2(x)
+        # x = self.drop2(x)
         x = self.relu(x)
 
         x = self.conv3(x)
+        # x = self.drop3(x)
         x = self.relu(x)
 
         # x = x.view(x.size(0), -1)
@@ -157,7 +162,7 @@ class DecoderGPT(nn.Module):
         # x = torch.cat([z, length.view(-1,1)], dim=-1)
         ### (b, 1000, lat) -> (b, 1000, 128)
         x = self.relu(self.fc(z))
-        # x = self.bn_fc(x)
+
         # x = self.bn_fc(x)
         # x = x.view(x.size(0), 128, 1000)
         x = torch.transpose(x, 1, 2)
@@ -171,7 +176,7 @@ class DecoderGPT(nn.Module):
         x = self.deconv2(x)
         x = self.relu(x)
         x = self.deconv3(x)
-        x = self.relu(x)
+
         # x = self.bn_final(x)
         # x = self.prob_dist(x)
         # x = self.clear_padding(x, length)
