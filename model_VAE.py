@@ -133,5 +133,5 @@ class VAECNN(nn.Module):
 
         seq = self.decoder(z)
         seq = seq.permute(0, 2, 1)
-        seq = nn.Softmax(dim=0)(seq)
+        seq = nn.Softmax(dim=1)(seq)
         return seq
