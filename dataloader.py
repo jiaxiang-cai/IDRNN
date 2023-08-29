@@ -29,8 +29,11 @@ class AminoAcidDataset(Dataset):
         
         # Perform one-hot encoding and post-padding
         if self.use_2dcnn:
-            self.max_sequence_length += 2 # Padding for 2D CNN in two sides
-        padded_sequence = np.zeros((self.max_sequence_length, self.num_amino_acids + 1), dtype=np.float32)
+            seq_length = self.max_sequence_length + 2 # Padding for 2D CNN in two sides
+        else:
+            seq_length = self.max_sequence_length
+
+        padded_sequence = np.zeros((seq_length, self.num_amino_acids + 1), dtype=np.float32)
         # Padded sequence should be in location of index 20
         for i, amino_acid in enumerate(sequence):
             if self.use_2dcnn:
@@ -46,25 +49,10 @@ class AminoAcidDataset(Dataset):
             padded_sequence[pad][20] = 1.0
             sequence.append(20)
         
+        if self.use_2dcnn:
+            padded_sequence[0][20] = 1.0
+            padded_sequence[seq_length - 1][20] = 1.0
+            sequence.insert(0, 20)
+            sequence.append(20)
+        
         return torch.tensor(padded_sequence, dtype=torch.float32), torch.tensor(sequence_length, dtype=torch.long), torch.tensor(sequence, dtype=torch.long)
-#
-
-
-# Path to the CSV file containing amino acid sequences
-# csv_file_path = 'path/to/your/csv/file.csv'
-
-# Set the maximum sequence length and number of amino acids
-# max_sequence_length = 10
-# num_amino_acids = 20
-
-# Create an instance of the AminoAcidDataset
-# dataset = AminoAcidDataset(csv_file_path, max_sequence_length, num_amino_acids)
-
-# # Create a DataLoader
-# batch_size = 2
-# dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-
-# # Iterate through the DataLoader
-# for batch in dataloader:
-#     print("Batch shape:", batch.shape)
-#     print("Batch data:", batch)
